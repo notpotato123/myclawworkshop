@@ -1,0 +1,23 @@
+model_list:
+  # Anthropic models (build phase - participants' claws use these via proxy)
+  - model_name: claude-sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+  - model_name: claude-haiku
+    litellm_params:
+      model: anthropic/claude-haiku-4-5-20251001
+
+  # DGX Spark / Qwen (free, local hardware)
+  # Participants can use this for all claw interactions (tool dispatch,
+  # chat, memory, game). Routes to Spark's LiteLLM which handles the
+  # nothink chat template (no thinking tokens, clean text responses).
+  # IMPORTANT: max N=8 concurrent. Deterministic explorer keeps game
+  # load low. If vLLM deadlocks: ssh spark "sudo docker restart vllm"
+  - model_name: qwen-game
+    litellm_params:
+      model: hosted_vllm/qwen3.6-35b-nothink
+      api_base: http://100.73.112.104:4000
+      api_key: os.environ/SPARK_LITELLM_KEY  # set this env var before starting the proxy
+
+general_settings:
+  default_model: claude-haiku

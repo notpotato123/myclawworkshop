@@ -1,0 +1,9 @@
+# Build artifacts
+myclaw
+*.exe
+memory_data/
+scheduler/tasks.json
+
+# OS files
+.DS_Store
+Thumbs.db
