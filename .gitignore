@@ -1,5 +1,4 @@
 # Build artifacts
-myclaw
 *.exe
 memory_data/
 scheduler/tasks.json
