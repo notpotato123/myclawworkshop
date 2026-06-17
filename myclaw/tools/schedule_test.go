@@ -80,6 +80,41 @@ func TestScheduleInvalidDelay(t *testing.T) {
 	}
 }
 
+func TestScheduleCancel(t *testing.T) {
+	tool := Schedule{Sched: newTestSched(t)}
+
+	// Schedule a task and grab its ID from the list.
+	runTool(t, tool, map[string]any{"action": "schedule", "description": "to be cancelled", "delay": "1h"})
+	listOut, _ := runTool(t, tool, map[string]any{"action": "list"})
+	// Extract ID from the "[<id>]" in the list output.
+	start := strings.Index(listOut, "[")
+	end := strings.Index(listOut, "]")
+	if start < 0 || end < 0 {
+		t.Fatalf("could not find task ID in list output: %q", listOut)
+	}
+	id := listOut[start+1 : end]
+
+	out, err := runTool(t, tool, map[string]any{"action": "cancel", "id": id})
+	if err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+	if !strings.Contains(out, "cancelled") {
+		t.Fatalf("expected cancellation confirmation, got %q", out)
+	}
+
+	listOut2, _ := runTool(t, tool, map[string]any{"action": "list"})
+	if !strings.Contains(strings.ToLower(listOut2), "no tasks") {
+		t.Fatalf("expected empty list after cancel, got %q", listOut2)
+	}
+}
+
+func TestScheduleCancelRequiresID(t *testing.T) {
+	tool := Schedule{Sched: newTestSched(t)}
+	if _, err := runTool(t, tool, map[string]any{"action": "cancel"}); err == nil {
+		t.Fatal("expected error when id is missing")
+	}
+}
+
 func TestScheduleUnknownAction(t *testing.T) {
 	tool := Schedule{Sched: newTestSched(t)}
 	if _, err := runTool(t, tool, map[string]any{"action": "delete"}); err == nil {

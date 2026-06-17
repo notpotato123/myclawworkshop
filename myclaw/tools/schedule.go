@@ -16,9 +16,10 @@ type Schedule struct {
 
 func (t Schedule) Name() string { return "schedule" }
 func (t Schedule) Description() string {
-	return `Schedule a task to run after a delay, or list pending tasks.
+	return `Schedule a task to run after a delay, list pending tasks, or cancel one.
 Use action "schedule" to create a task (required fields: description, delay).
-Use action "list" to see all pending tasks.
+Use action "list" to see all pending tasks with their IDs.
+Use action "cancel" to delete a task by ID (required field: id).
 delay is a Go duration string: "30m", "1h", "24h", "2h30m", etc.
 Set recurring to true for tasks that should repeat at the same interval.`
 }
@@ -29,8 +30,12 @@ func (t Schedule) Schema() map[string]any {
 		"properties": map[string]any{
 			"action": map[string]any{
 				"type":        "string",
-				"enum":        []string{"schedule", "list"},
-				"description": `"schedule" to create a task, "list" to show pending tasks.`,
+				"enum":        []string{"schedule", "list", "cancel"},
+				"description": `"schedule" to create a task, "list" to show pending tasks, "cancel" to delete a task by ID.`,
+			},
+			"id": map[string]any{
+				"type":        "string",
+				"description": "Task ID to cancel (shown in the list output).",
 			},
 			"description": map[string]any{
 				"type":        "string",
@@ -56,6 +61,7 @@ func (t Schedule) Execute(_ context.Context, params json.RawMessage) (string, er
 		Description string `json:"description"`
 		Delay       string `json:"delay"`
 		Recurring   bool   `json:"recurring"`
+		ID          string `json:"id"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return "", fmt.Errorf("invalid parameters: %w", err)
@@ -113,7 +119,16 @@ func (t Schedule) Execute(_ context.Context, params json.RawMessage) (string, er
 		}
 		return fmt.Sprintf("Task scheduled for %s%s.", fireAt.Local().Format("2006-01-02 15:04:05"), recur), nil
 
+	case "cancel":
+		if p.ID == "" {
+			return "", fmt.Errorf("id is required for cancel")
+		}
+		if err := t.Sched.Remove(p.ID); err != nil {
+			return "", fmt.Errorf("removing task: %w", err)
+		}
+		return fmt.Sprintf("Task %q cancelled.", p.ID), nil
+
 	default:
-		return "", fmt.Errorf("unknown action %q: use \"schedule\" or \"list\"", p.Action)
+		return "", fmt.Errorf("unknown action %q: use \"schedule\", \"list\", or \"cancel\"", p.Action)
 	}
 }
