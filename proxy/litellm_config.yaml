@@ -1,0 +1,22 @@
+model_list:
+  - model_name: qwen
+    litellm_params:
+      model: openrouter/qwen/qwen3-32b
+      api_key: os.environ/OPENROUTER_API_KEY
+      extra_body:
+        reasoning:
+          effort: "none"
+          exclude: true
+
+  # Fallback if 32B outputs aren't clean enough
+  - model_name: qwen-plus
+    litellm_params:
+      model: openrouter/qwen/qwen3.6-plus
+      api_key: os.environ/OPENROUTER_API_KEY
+      extra_body:
+        reasoning:
+          effort: "none"
+          exclude: true
+
+general_settings:
+  default_model: qwen
