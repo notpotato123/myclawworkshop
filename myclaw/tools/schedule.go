@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"myclaw/scheduler"
@@ -19,7 +20,7 @@ func (t Schedule) Description() string {
 	return `Schedule a task to run after a delay, list pending tasks, or cancel one.
 Use action "schedule" to create a task (required fields: description, delay).
 Use action "list" to see all pending tasks with their IDs.
-Use action "cancel" to delete a task by ID (required field: id).
+Use action "cancel" with either id or description to delete a task (description does a partial match).
 delay is a Go duration string: "30m", "1h", "24h", "2h30m", etc.
 Set recurring to true for tasks that should repeat at the same interval.`
 }
@@ -35,7 +36,7 @@ func (t Schedule) Schema() map[string]any {
 			},
 			"id": map[string]any{
 				"type":        "string",
-				"description": "Task ID to cancel (shown in the list output).",
+				"description": "Task ID to cancel. Shown in list output and in the confirmation when a task is created.",
 			},
 			"description": map[string]any{
 				"type":        "string",
@@ -117,16 +118,30 @@ func (t Schedule) Execute(_ context.Context, params json.RawMessage) (string, er
 		if p.Recurring {
 			recur = fmt.Sprintf(", recurring every %s", interval)
 		}
-		return fmt.Sprintf("Task scheduled for %s%s.", fireAt.Local().Format("2006-01-02 15:04:05"), recur), nil
+		return fmt.Sprintf("Task scheduled (id: %s) for %s%s.", task.ID, fireAt.Local().Format("2006-01-02 15:04:05"), recur), nil
 
 	case "cancel":
-		if p.ID == "" {
-			return "", fmt.Errorf("id is required for cancel")
+		if p.ID == "" && p.Description == "" {
+			return "", fmt.Errorf("provide either id or description to identify the task to cancel")
 		}
-		if err := t.Sched.Remove(p.ID); err != nil {
+		id := p.ID
+		if id == "" {
+			// Find by description (case-insensitive substring match).
+			needle := strings.ToLower(p.Description)
+			for _, task := range t.Sched.List() {
+				if strings.Contains(strings.ToLower(task.Description), needle) {
+					id = task.ID
+					break
+				}
+			}
+			if id == "" {
+				return "", fmt.Errorf("no task found matching description %q", p.Description)
+			}
+		}
+		if err := t.Sched.Remove(id); err != nil {
 			return "", fmt.Errorf("removing task: %w", err)
 		}
-		return fmt.Sprintf("Task %q cancelled.", p.ID), nil
+		return fmt.Sprintf("Task %q cancelled.", id), nil
 
 	default:
 		return "", fmt.Errorf("unknown action %q: use \"schedule\", \"list\", or \"cancel\"", p.Action)
