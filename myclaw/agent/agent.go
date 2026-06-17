@@ -10,17 +10,13 @@ import (
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/shared"
+	"myclaw/msgs"
 	"myclaw/tools"
 )
 
-// Message is a unit of work for the agent loop.
-type Message struct {
-	Content string
-	Source  string                    // "cli", "web", "scheduler"
-	ReplyTo func(string)              // called with each response text chunk
-	Done    func()                    // called once the full response is complete
-	OnTool  func(name, status string) // called on tool events
-}
+// Message is an alias for msgs.Message so callers can use agent.Message or
+// msgs.Message interchangeably without an import cycle.
+type Message = msgs.Message
 
 // RunAgent runs the agent loop, reading from msgCh until the channel is
 // closed or ctx is cancelled. Each Message carries its own reply callbacks
