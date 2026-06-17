@@ -27,26 +27,22 @@ func main() {
 	apiKey := os.Getenv("CLAW_API_KEY")
 	model := os.Getenv("CLAW_MODEL")
 	port := os.Getenv("CLAW_PORT")
-	if port == "" {
-		port = "8080"
-	}
 
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "CLAW_API_KEY environment variable is required")
 		os.Exit(1)
 	}
-
 	if model == "" {
 		model = defaultModel
 	}
-
-	opts := []option.RequestOption{
-		option.WithAPIKey(apiKey),
+	if port == "" {
+		port = "8080"
 	}
+
+	opts := []option.RequestOption{option.WithAPIKey(apiKey)}
 	if baseURL != "" {
 		opts = append(opts, option.WithBaseURL(baseURL))
 	}
-
 	client := openai.NewClient(opts...)
 
 	memStore, err := memory.NewStore(".claw_memory")
@@ -55,17 +51,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Buffered so the scheduler callback never blocks when the agent is busy.
+	// msgCh is the single channel all input sources feed into the agent loop.
 	msgCh := make(chan agent.Message, 16)
 
+	// hub broadcasts agent output to all connected WebSocket clients.
+	hub := web.NewHub()
+
 	sched, err := scheduler.New("scheduler/tasks.json", func(description string) {
+		// Notify the web UI that a scheduled task is firing.
+		hub.Broadcast(web.SystemMsg("Scheduled task: " + description))
 		msgCh <- agent.Message{
 			Content: description,
 			Source:  "scheduler",
-			ReplyTo: func(text string) { fmt.Print(text) },
-			Done:    func() { fmt.Println() },
+			ReplyTo: func(text string) {
+				fmt.Print(text)
+				hub.Broadcast(web.ChunkMsg(text))
+			},
+			Done: func() {
+				fmt.Println()
+				hub.Broadcast(web.DoneMsg())
+			},
 			OnTool: func(name, status string) {
 				fmt.Fprintf(os.Stderr, "[tool %s: %s]\n", name, status)
+				hub.Broadcast(web.ToolMsg(name, status))
 			},
 		}
 	})
@@ -101,7 +109,8 @@ func main() {
 	go sched.Run(ctx)
 	go agent.StartCLIInput(ctx, msgCh)
 	go func() {
-		if err := web.Start(port); err != nil {
+		srv := web.NewServer(hub, msgCh)
+		if err := srv.Start(port); err != nil {
 			fmt.Fprintf(os.Stderr, "Web server error: %v\n", err)
 		}
 	}()

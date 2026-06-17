@@ -22,185 +22,61 @@
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    html, body {
-      height: 100%;
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 15px;
-    }
+    html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 15px; }
 
-    /* ── Layout ── */
-    #app {
-      display: flex;
-      flex-direction: column;
-      height: 100dvh;
-      max-width: 760px;
-      margin: 0 auto;
-    }
+    #app { display: flex; flex-direction: column; height: 100dvh; max-width: 760px; margin: 0 auto; }
 
-    /* ── Header ── */
-    header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 20px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .logo {
-      width: 32px; height: 32px;
-      background: var(--accent);
-      border-radius: 8px;
-      display: grid; place-items: center;
-      color: #fff;
-      font-size: 18px;
-      font-weight: 700;
-      user-select: none;
-    }
+    /* Header */
+    header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .logo { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 18px; font-weight: 700; user-select: none; }
     header h1 { font-size: 16px; font-weight: 600; letter-spacing: -.3px; }
-    header p  { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    #status { font-size: 12px; color: var(--muted); margin-top: 1px; display: flex; align-items: center; gap: 5px; }
+    .dot-status { width: 6px; height: 6px; border-radius: 50%; background: #d4d4d4; flex-shrink: 0; transition: background .3s; }
+    .dot-status.online  { background: #4ade80; }
+    .dot-status.offline { background: #f87171; }
 
-    /* ── Messages ── */
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      scroll-behavior: smooth;
-    }
+    /* Messages */
+    #messages { flex: 1; overflow-y: auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
 
-    .msg {
-      display: flex;
-      flex-direction: column;
-      max-width: 78%;
-      gap: 4px;
-    }
+    .msg { display: flex; flex-direction: column; max-width: 78%; gap: 4px; }
     .msg.user  { align-self: flex-end; align-items: flex-end; }
     .msg.agent { align-self: flex-start; align-items: flex-start; }
-
-    .msg .label {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .4px;
-      text-transform: uppercase;
-      color: var(--muted);
-      padding: 0 4px;
-    }
-
-    .bubble {
-      padding: 10px 14px;
-      border-radius: var(--radius);
-      line-height: 1.55;
-      word-break: break-word;
-      white-space: pre-wrap;
-    }
-    .msg.user  .bubble {
-      background: var(--user-bg);
-      color: #fff;
-      border-bottom-right-radius: 4px;
-    }
-    .msg.agent .bubble {
-      background: var(--agent-bg);
-      border: 1px solid var(--agent-bd);
-      color: var(--text);
-      border-bottom-left-radius: 4px;
-    }
-    .msg.system .bubble {
-      background: var(--accent-dim);
-      border: 1px solid #c7d2fe;
-      color: #4338ca;
-      font-size: 13px;
-    }
     .msg.system { align-self: center; max-width: 90%; }
 
-    /* ── Tool badge ── */
-    .tool-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      color: var(--muted);
-      background: var(--border);
-      border-radius: 6px;
-      padding: 3px 8px;
-      margin: 2px 0;
-    }
-    .tool-badge .dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-    }
+    .msg .label { font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); padding: 0 4px; }
 
-    /* ── Typing indicator ── */
-    .typing .bubble {
-      background: var(--agent-bg);
-      border: 1px solid var(--agent-bd);
-      padding: 12px 16px;
-    }
+    .bubble { padding: 10px 14px; border-radius: var(--radius); line-height: 1.55; word-break: break-word; white-space: pre-wrap; }
+    .msg.user  .bubble { background: var(--user-bg); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.agent .bubble { background: var(--agent-bg); border: 1px solid var(--agent-bd); color: var(--text); border-bottom-left-radius: 4px; }
+    .msg.system .bubble { background: var(--accent-dim); border: 1px solid #c7d2fe; color: #4338ca; font-size: 13px; text-align: center; border-radius: 20px; padding: 6px 14px; }
+
+    /* Tool badges */
+    .tool-row { align-self: flex-start; }
+    .tool-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); background: var(--border); border-radius: 6px; padding: 4px 10px; }
+    .tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .tool-dot.done  { background: #4ade80; }
+    .tool-dot.error { background: #f87171; }
+    .tool-name { font-weight: 600; color: var(--text); }
+
+    /* Typing indicator */
+    .typing .bubble { background: var(--agent-bg); border: 1px solid var(--agent-bd); padding: 12px 16px; }
     .dots { display: flex; gap: 4px; }
-    .dots span {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: #6ee7b7;
-      animation: bounce .9s ease-in-out infinite;
-    }
+    .dots span { width: 6px; height: 6px; border-radius: 50%; background: #6ee7b7; animation: bounce .9s ease-in-out infinite; }
     .dots span:nth-child(2) { animation-delay: .15s; }
     .dots span:nth-child(3) { animation-delay: .30s; }
-    @keyframes bounce {
-      0%,80%,100% { transform: translateY(0);   opacity: .6; }
-      40%          { transform: translateY(-6px); opacity: 1; }
-    }
+    @keyframes bounce { 0%,80%,100% { transform: translateY(0); opacity: .6; } 40% { transform: translateY(-6px); opacity: 1; } }
 
-    /* ── Input area ── */
-    #input-area {
-      padding: 16px 20px;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-      flex-shrink: 0;
-    }
-    textarea {
-      flex: 1;
-      resize: none;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-family: var(--font);
-      font-size: 15px;
-      line-height: 1.5;
-      outline: none;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 44px;
-      max-height: 160px;
-      transition: border-color .15s;
-    }
+    /* Input */
+    #input-area { padding: 16px 20px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+    textarea { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: var(--font); font-size: 15px; line-height: 1.5; outline: none; background: var(--bg); color: var(--text); min-height: 44px; max-height: 160px; transition: border-color .15s; }
     textarea:focus { border-color: var(--accent); }
     textarea::placeholder { color: var(--muted); }
-
-    button#send {
-      flex-shrink: 0;
-      width: 44px; height: 44px;
-      border-radius: 10px;
-      border: none;
-      background: var(--accent);
-      color: #fff;
-      cursor: pointer;
-      display: grid; place-items: center;
-      transition: background .15s, transform .1s;
-    }
+    button#send { flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px; border: none; background: var(--accent); color: #fff; cursor: pointer; display: grid; place-items: center; transition: background .15s, transform .1s; }
     button#send:hover  { background: #4338ca; }
     button#send:active { transform: scale(.95); }
     button#send:disabled { background: var(--border); cursor: not-allowed; }
     button#send svg { width: 20px; height: 20px; }
 
-    /* ── Scrollbar ── */
     #messages::-webkit-scrollbar { width: 5px; }
     #messages::-webkit-scrollbar-track { background: transparent; }
     #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -212,26 +88,16 @@
     <div class="logo">⌘</div>
     <div>
       <h1>Claw</h1>
-      <p>AI agent — connecting…</p>
+      <div id="status"><span class="dot-status" id="dot"></span><span id="status-text">Connecting…</span></div>
     </div>
   </header>
 
-  <div id="messages">
-    <div class="msg system">
-      <div class="bubble">WebSocket not yet connected. This is a static preview.</div>
-    </div>
-  </div>
+  <div id="messages"></div>
 
   <div id="input-area">
-    <textarea
-      id="input"
-      rows="1"
-      placeholder="Message Claw…"
-      autofocus
-    ></textarea>
-    <button id="send" title="Send">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-           stroke-linecap="round" stroke-linejoin="round">
+    <textarea id="input" rows="1" placeholder="Message Claw…" autofocus></textarea>
+    <button id="send" disabled title="Send">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="22" y1="2" x2="11" y2="13"/>
         <polygon points="22 2 15 22 11 13 2 9 22 2"/>
       </svg>
@@ -240,57 +106,167 @@
 </div>
 
 <script>
-  const messagesEl = document.getElementById('messages');
-  const inputEl    = document.getElementById('input');
-  const sendBtn    = document.getElementById('send');
+  const messagesEl  = document.getElementById('messages');
+  const inputEl     = document.getElementById('input');
+  const sendBtn     = document.getElementById('send');
+  const dotEl       = document.getElementById('dot');
+  const statusText  = document.getElementById('status-text');
 
-  // ── Auto-resize textarea ──
+  let ws            = null;
+  let activeBubble  = null;   // current streaming agent bubble
+  let toolBadges    = {};     // toolName → {dot, status} elements
+
+  // ── Auto-resize textarea ──────────────────────────────────────────────────
   inputEl.addEventListener('input', () => {
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
   });
 
-  // ── Send on Enter (Shift+Enter for newline) ──
   inputEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
   sendBtn.addEventListener('click', sendMessage);
 
-  function sendMessage() {
-    const text = inputEl.value.trim();
-    if (!text) return;
-    appendMessage('user', text);
-    inputEl.value = '';
-    inputEl.style.height = 'auto';
-    // Placeholder: echo back a stub until WebSocket is wired up.
-    showTyping();
-    setTimeout(() => {
-      removeTyping();
-      appendMessage('agent', '(WebSocket not connected — backend coming soon)');
-    }, 800);
+  // ── WebSocket connection ──────────────────────────────────────────────────
+  function connect() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${proto}//${location.host}/ws`);
+
+    ws.onopen = () => {
+      dotEl.className = 'dot-status online';
+      statusText.textContent = 'Connected';
+      sendBtn.disabled = false;
+    };
+
+    ws.onclose = () => {
+      dotEl.className = 'dot-status offline';
+      statusText.textContent = 'Disconnected — reconnecting…';
+      sendBtn.disabled = true;
+      ws = null;
+      // Finish any in-progress bubble so the UI isn't stuck mid-stream.
+      activeBubble = null;
+      setTimeout(connect, 2000);
+    };
+
+    ws.onerror = () => ws.close();
+
+    ws.onmessage = e => {
+      const msg = JSON.parse(e.data);
+
+      switch (msg.type) {
+
+        case 'chunk':
+          if (!activeBubble) {
+            removeTyping();
+            activeBubble = createAgentBubble();
+          }
+          activeBubble.textContent += msg.content;
+          scrollToBottom();
+          break;
+
+        case 'done':
+          activeBubble = null;
+          toolBadges = {};
+          break;
+
+        case 'tool_call':
+          activeBubble = null; // any prior text is "done" before the tool runs
+          toolBadges[msg.name] = appendToolBadge(msg.name, 'running…');
+          break;
+
+        case 'tool_result': {
+          const badge = toolBadges[msg.name];
+          if (badge) {
+            badge.dot.className    = 'tool-dot ' + (msg.status === 'done' ? 'done' : 'error');
+            badge.status.textContent = msg.status === 'done' ? 'done' : 'error';
+          }
+          break;
+        }
+
+        case 'system':
+          appendSystemMessage(msg.content);
+          break;
+      }
+    };
   }
 
-  // ── Message helpers ──
-  function appendMessage(role, text) {
-    const wrap = document.createElement('div');
-    wrap.className = `msg ${role}`;
+  // ── Send ──────────────────────────────────────────────────────────────────
+  function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
 
+    appendUserMessage(text);
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    showTyping();
+
+    ws.send(JSON.stringify({ type: 'message', content: text }));
+  }
+
+  // ── DOM helpers ───────────────────────────────────────────────────────────
+  function appendUserMessage(text) {
+    const wrap   = document.createElement('div');
+    wrap.className = 'msg user';
     const label  = document.createElement('div');
     label.className = 'label';
-    label.textContent = role === 'user' ? 'You' : 'Claw';
-
+    label.textContent = 'You';
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.textContent = text;
+    wrap.appendChild(label);
+    wrap.appendChild(bubble);
+    messagesEl.appendChild(wrap);
+    scrollToBottom();
+  }
 
+  function createAgentBubble() {
+    const wrap   = document.createElement('div');
+    wrap.className = 'msg agent';
+    const label  = document.createElement('div');
+    label.className = 'label';
+    label.textContent = 'Claw';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
     wrap.appendChild(label);
     wrap.appendChild(bubble);
     messagesEl.appendChild(wrap);
     scrollToBottom();
     return bubble;
+  }
+
+  function appendSystemMessage(text) {
+    const wrap   = document.createElement('div');
+    wrap.className = 'msg system';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+    messagesEl.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function appendToolBadge(name, statusText) {
+    const row  = document.createElement('div');
+    row.className = 'tool-row';
+    const badge = document.createElement('div');
+    badge.className = 'tool-badge';
+    const dot = document.createElement('span');
+    dot.className = 'tool-dot';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'tool-name';
+    nameEl.textContent = name;
+    const sep = document.createElement('span');
+    sep.textContent = '—';
+    const st = document.createElement('span');
+    st.textContent = statusText;
+    badge.appendChild(dot);
+    badge.appendChild(nameEl);
+    badge.appendChild(sep);
+    badge.appendChild(st);
+    row.appendChild(badge);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+    return { dot, status: st };
   }
 
   let typingEl = null;
@@ -302,17 +278,12 @@
     messagesEl.appendChild(typingEl);
     scrollToBottom();
   }
-  function removeTyping() {
-    typingEl?.remove();
-    typingEl = null;
-  }
+  function removeTyping() { typingEl?.remove(); typingEl = null; }
 
-  function scrollToBottom() {
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }
+  function scrollToBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 
-  // Expose for WebSocket wiring in the next step.
-  window.__claw = { appendMessage, showTyping, removeTyping, scrollToBottom };
+  // ── Start ─────────────────────────────────────────────────────────────────
+  connect();
 </script>
 </body>
 </html>
