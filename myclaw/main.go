@@ -47,6 +47,7 @@ func main() {
 	// hub broadcasts agent output to all connected WebSocket clients.
 	hub := web.NewHub()
 	srv := web.NewServer(hub, msgCh, cfg.Port)
+	srv.SetA2ASender(agent.MakeSendFn(msgCh))
 
 	sched, err := scheduler.New(cfg.TasksFile, func(description string) {
 		slog.Info("scheduled task fired", "description", description)

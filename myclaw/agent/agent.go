@@ -59,6 +59,25 @@ func RunAgent(ctx context.Context, client *openai.Client, model string, systemPr
 	}
 }
 
+// MakeSendFn returns a function that sends text to the agent via ch as an
+// "a2a" source and blocks until the agent finishes, returning the full reply.
+// Safe to call from multiple goroutines concurrently.
+func MakeSendFn(ch chan<- Message) func(text string) (string, error) {
+	return func(text string) (string, error) {
+		var buf strings.Builder
+		doneCh := make(chan struct{})
+		ch <- Message{
+			Content: text,
+			Source:  "a2a",
+			ReplyTo: func(t string) { buf.WriteString(t) },
+			Done:    func() { close(doneCh) },
+			OnTool:  func(_, _ string) {},
+		}
+		<-doneCh
+		return buf.String(), nil
+	}
+}
+
 // StartCLIInput reads lines from stdin and sends them to ch as "cli" Messages.
 // It blocks after each send until Done() is called so the prompt is only
 // reprinted after the agent finishes responding, keeping the terminal clean.
