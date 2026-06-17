@@ -17,6 +17,11 @@ func NewClawCard(port string) AgentCard {
 			"remember",
 			"recall",
 			"schedule",
+			"discover_peer",
+			"ask_peer",
+			"broadcast",
+			"find_peer_with_skill",
+			"join_game",
 		},
 	}
 }

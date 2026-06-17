@@ -13,6 +13,7 @@ import (
 	"myclaw/a2a"
 	"myclaw/agent"
 	"myclaw/config"
+	"myclaw/game"
 	"myclaw/memory"
 	"myclaw/scheduler"
 	"myclaw/tools"
@@ -77,6 +78,11 @@ func main() {
 	}
 
 	peerRegistry := a2a.NewRegistry()
+	gameState := &game.State{}
+
+	// ctx is cancelled on Ctrl+C.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	registry := tools.NewRegistry()
 	for _, t := range []tools.Tool{
@@ -91,6 +97,7 @@ func main() {
 		tools.AskPeer{Registry: peerRegistry},
 		tools.Broadcast{Registry: peerRegistry},
 		tools.FindPeerWithSkill{Registry: peerRegistry},
+		tools.JoinGame{State: gameState, Registry: peerRegistry, MsgCh: msgCh, AppCtx: ctx},
 	} {
 		if err := registry.Register(t); err != nil {
 			slog.Error("failed to register tool", "tool", t.Name(), "err", err)
@@ -102,10 +109,6 @@ func main() {
 	if memories := memStore.Dump(memoryTokenBudget); memories != "" {
 		prompt += "\n\n## Memories\nThe following information was saved from previous sessions:\n" + memories
 	}
-
-	// ctx is cancelled on Ctrl+C.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
 
 	go sched.Run(ctx)
 	go agent.StartCLIInput(ctx, msgCh)
