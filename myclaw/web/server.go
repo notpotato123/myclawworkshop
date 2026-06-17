@@ -32,6 +32,9 @@ type Server struct {
 	msgCh   chan<- agent.Message
 	httpSrv *http.Server
 	port    string
+	// sendA2A is called by the A2A handler to synchronously process a message
+	// and return the full response. Set via SetA2ASender before Start.
+	sendA2A func(text string) (string, error)
 }
 
 // NewServer creates a Server. hub is shared with callers so they can
@@ -39,6 +42,12 @@ type Server struct {
 // callbacks in main.go).
 func NewServer(hub *Hub, msgCh chan<- agent.Message, port string) *Server {
 	return &Server{hub: hub, msgCh: msgCh, port: port}
+}
+
+// SetA2ASender installs the function used by the A2A handler to synchronously
+// send a message through the agent and collect the full response.
+func (s *Server) SetA2ASender(fn func(text string) (string, error)) {
+	s.sendA2A = fn
 }
 
 // Start begins serving HTTP and WebSocket traffic on the given port. It blocks
@@ -57,6 +66,9 @@ func (s *Server) Start(port string) error {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(card)
 	})
+	if s.sendA2A != nil {
+		mux.Handle("/a2a", a2a.NewHandler(s.sendA2A))
+	}
 	mux.Handle("/", http.FileServer(http.FS(sub)))
 
 	s.httpSrv = &http.Server{Addr: ":" + port, Handler: mux}
