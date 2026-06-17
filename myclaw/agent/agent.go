@@ -12,85 +12,99 @@ import (
 	"myclaw/tools"
 )
 
-// RunAgent runs the main agent loop. It reads user input from stdin,
-// sends it to the LLM with conversation history, handles tool calls,
-// and streams responses back to stdout.
-//
-// injectCh is an optional channel for injecting messages into the loop
-// programmatically (e.g. from the scheduler). Pass nil to disable injection.
-func RunAgent(ctx context.Context, client *openai.Client, model string, systemPrompt string, registry *tools.Registry, injectCh <-chan string) error {
+// Message is a unit of work for the agent loop.
+type Message struct {
+	Content string
+	Source  string                    // "cli", "web", "scheduler"
+	ReplyTo func(string)              // called with each response text chunk
+	Done    func()                    // called once the full response is complete
+	OnTool  func(name, status string) // called on tool events
+}
+
+// RunAgent runs the agent loop, reading from msgCh until the channel is
+// closed or ctx is cancelled. Each Message carries its own reply callbacks
+// so that CLI, scheduler, and future WebSocket sources are handled uniformly.
+func RunAgent(ctx context.Context, client *openai.Client, model string, systemPrompt string, registry *tools.Registry, msgCh <-chan Message) error {
 	messages := []openai.ChatCompletionMessageParamUnion{
 		systemMessage(systemPrompt),
 	}
-
 	toolDefs := buildToolDefs(registry)
 
-	// Run the blocking stdin scanner in a goroutine so we can also select on
-	// injectCh and ctx.Done without getting stuck waiting for user input.
-	inputCh := make(chan string)
-	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			inputCh <- scanner.Text()
-		}
-		close(inputCh)
-	}()
-
-	// nilInject is a nil channel that never fires; used when caller passes nil.
-	var nilInject <-chan string
-	if injectCh == nil {
-		injectCh = nilInject
-	}
-
-	fmt.Print("> ")
 	for {
-		var input string
-		var injected bool
-
 		select {
 		case <-ctx.Done():
 			fmt.Println("\nGoodbye!")
 			return nil
-		case line, ok := <-inputCh:
+		case msg, ok := <-msgCh:
 			if !ok {
-				fmt.Println()
 				return nil
 			}
-			input = strings.TrimSpace(line)
-		case msg := <-injectCh:
-			input = msg
-			injected = true
-		}
-
-		if !injected {
-			if input == "" {
-				fmt.Print("> ")
-				continue
+			// Non-CLI sources get a visual header so the user can see what fired.
+			if msg.Source != "cli" {
+				fmt.Printf("\n[%s] %s\n", msg.Source, msg.Content)
 			}
-			if input == "exit" {
-				fmt.Println("Goodbye!")
-				return nil
+			messages = append(messages, userMessage(msg.Content))
+			var err error
+			messages, err = agentTurn(ctx, client, model, messages, toolDefs, registry, msg)
+			if err != nil {
+				if msg.ReplyTo != nil {
+					msg.ReplyTo(fmt.Sprintf("error: %v", err))
+				}
 			}
-		}
-
-		if injected {
-			fmt.Printf("\n[scheduled] %s\n", input)
-		}
-
-		messages = append(messages, userMessage(input))
-
-		var err error
-		messages, err = agentTurn(ctx, client, model, messages, toolDefs, registry)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
-		if !injected {
-			fmt.Print("> ")
+			if msg.Done != nil {
+				msg.Done()
+			}
 		}
 	}
 }
 
-func agentTurn(ctx context.Context, client *openai.Client, model string, messages []openai.ChatCompletionMessageParamUnion, toolDefs []openai.ChatCompletionToolParam, registry *tools.Registry) ([]openai.ChatCompletionMessageParamUnion, error) {
+// StartCLIInput reads lines from stdin and sends them to ch as "cli" Messages.
+// It blocks after each send until Done() is called so the prompt is only
+// reprinted after the agent finishes responding, keeping the terminal clean.
+// It runs until stdin is closed or ctx is cancelled.
+func StartCLIInput(ctx context.Context, ch chan<- Message) {
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Print("> ")
+	for scanner.Scan() {
+		input := strings.TrimSpace(scanner.Text())
+		if input == "" {
+			fmt.Print("> ")
+			continue
+		}
+		if input == "exit" {
+			fmt.Println("Goodbye!")
+			return
+		}
+
+		doneCh := make(chan struct{})
+		select {
+		case <-ctx.Done():
+			return
+		case ch <- Message{
+			Content: input,
+			Source:  "cli",
+			ReplyTo: func(text string) { fmt.Print(text) },
+			Done: func() {
+				fmt.Println()
+				close(doneCh)
+			},
+			OnTool: func(name, status string) {
+				fmt.Fprintf(os.Stderr, "[tool %s: %s]\n", name, status)
+			},
+		}:
+		}
+
+		// Wait for the agent to finish before printing the next prompt.
+		select {
+		case <-doneCh:
+		case <-ctx.Done():
+			return
+		}
+		fmt.Print("> ")
+	}
+}
+
+func agentTurn(ctx context.Context, client *openai.Client, model string, messages []openai.ChatCompletionMessageParamUnion, toolDefs []openai.ChatCompletionToolParam, registry *tools.Registry, msg Message) ([]openai.ChatCompletionMessageParamUnion, error) {
 	for {
 		params := openai.ChatCompletionNewParams{
 			Model:    model,
@@ -110,7 +124,9 @@ func agentTurn(ctx context.Context, client *openai.Client, model string, message
 		for event := range events {
 			switch event.Type {
 			case EventText:
-				fmt.Print(event.Text)
+				if msg.ReplyTo != nil {
+					msg.ReplyTo(event.Text)
+				}
 			case EventDone:
 				fullContent = event.FullContent
 				toolCalls = event.ToolCalls
@@ -122,11 +138,14 @@ func agentTurn(ctx context.Context, client *openai.Client, model string, message
 		messages = append(messages, assistantMessage(fullContent, toolCalls))
 
 		if len(toolCalls) == 0 {
-			fmt.Println()
 			return messages, nil
 		}
 
-		fmt.Println()
+		// Separate streaming text from tool-call output with a newline.
+		if msg.ReplyTo != nil {
+			msg.ReplyTo("\n")
+		}
+
 		for _, tc := range toolCalls {
 			toolName := tc.Function.Name
 			toolArgs := tc.Function.Arguments
@@ -134,21 +153,30 @@ func agentTurn(ctx context.Context, client *openai.Client, model string, message
 			tool, ok := registry.Get(toolName)
 			if !ok {
 				errMsg := fmt.Sprintf("unknown tool: %s", toolName)
-				fmt.Fprintf(os.Stderr, "[tool error: %s]\n", errMsg)
+				if msg.OnTool != nil {
+					msg.OnTool(toolName, "unknown")
+				}
 				messages = append(messages, toolMessage(tc.ID, errMsg))
 				continue
 			}
 
-			fmt.Fprintf(os.Stderr, "[calling tool: %s]\n", toolName)
+			if msg.OnTool != nil {
+				msg.OnTool(toolName, "calling")
+			}
 
 			result, err := tool.Execute(ctx, []byte(toolArgs))
 			if err != nil {
 				errMsg := fmt.Sprintf("tool error: %v", err)
-				fmt.Fprintf(os.Stderr, "[%s]\n", errMsg)
+				if msg.OnTool != nil {
+					msg.OnTool(toolName, "error")
+				}
 				messages = append(messages, toolMessage(tc.ID, errMsg))
 				continue
 			}
 
+			if msg.OnTool != nil {
+				msg.OnTool(toolName, "done")
+			}
 			messages = append(messages, toolMessage(tc.ID, result))
 		}
 	}

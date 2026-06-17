@@ -50,11 +50,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	// injectCh carries scheduler-fired task descriptions into the agent loop.
-	injectCh := make(chan string, 8)
+	// Buffered so the scheduler callback never blocks when the agent is busy.
+	msgCh := make(chan agent.Message, 16)
 
 	sched, err := scheduler.New("scheduler/tasks.json", func(description string) {
-		injectCh <- description
+		msgCh <- agent.Message{
+			Content: description,
+			Source:  "scheduler",
+			ReplyTo: func(text string) { fmt.Print(text) },
+			Done:    func() { fmt.Println() },
+			OnTool: func(name, status string) {
+				fmt.Fprintf(os.Stderr, "[tool %s: %s]\n", name, status)
+			},
+		}
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create scheduler: %v\n", err)
@@ -86,10 +94,11 @@ func main() {
 	defer stop()
 
 	go sched.Run(ctx)
+	go agent.StartCLIInput(ctx, msgCh)
 
 	fmt.Println("Agent ready. Type 'exit' or press Ctrl+C to quit.")
 
-	if err := agent.RunAgent(ctx, &client, model, prompt, registry, injectCh); err != nil {
+	if err := agent.RunAgent(ctx, &client, model, prompt, registry, msgCh); err != nil {
 		fmt.Fprintf(os.Stderr, "Agent error: %v\n", err)
 		os.Exit(1)
 	}
