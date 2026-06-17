@@ -6,16 +6,16 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
 	"myclaw/agent"
 	"myclaw/memory"
 	"myclaw/scheduler"
 	"myclaw/tools"
-	"myclaw/web"
+
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
 )
 
-const defaultModel = "gpt-4o"
+const defaultModel = "qwen"
 
 const baseSystemPrompt = "You are a helpful assistant. You have access to tools for reading files, listing directories, writing files, and running shell commands. Use them when appropriate to help the user."
 
