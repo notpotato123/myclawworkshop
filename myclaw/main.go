@@ -10,6 +10,7 @@ import (
 	"myclaw/memory"
 	"myclaw/scheduler"
 	"myclaw/tools"
+	"myclaw/web"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
