@@ -10,6 +10,7 @@ import (
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"myclaw/a2a"
 	"myclaw/agent"
 	"myclaw/config"
 	"myclaw/memory"
@@ -75,6 +76,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	peerRegistry := a2a.NewRegistry()
+
 	registry := tools.NewRegistry()
 	for _, t := range []tools.Tool{
 		tools.ReadFile{},
@@ -84,6 +87,10 @@ func main() {
 		tools.Remember{Store: memStore},
 		tools.Recall{Store: memStore},
 		tools.Schedule{Sched: sched},
+		tools.DiscoverPeer{Registry: peerRegistry},
+		tools.AskPeer{Registry: peerRegistry},
+		tools.Broadcast{Registry: peerRegistry},
+		tools.FindPeerWithSkill{Registry: peerRegistry},
 	} {
 		if err := registry.Register(t); err != nil {
 			slog.Error("failed to register tool", "tool", t.Name(), "err", err)
