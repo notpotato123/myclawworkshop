@@ -15,7 +15,10 @@ import (
 
 const defaultModel = "gpt-4o"
 
-const systemPrompt = "You are a helpful assistant. You have access to tools for reading files, listing directories, writing files, and running shell commands. Use them when appropriate to help the user."
+const baseSystemPrompt = "You are a helpful assistant. You have access to tools for reading files, listing directories, writing files, and running shell commands. Use them when appropriate to help the user."
+
+// memoryTokenBudget caps injected memories at ~2000 tokens (≈8000 chars).
+const memoryTokenBudget = 8000
 
 func main() {
 	baseURL := os.Getenv("CLAW_BASE_URL")
@@ -61,12 +64,17 @@ func main() {
 		}
 	}
 
+	prompt := baseSystemPrompt
+	if memories := memStore.Dump(memoryTokenBudget); memories != "" {
+		prompt += "\n\n## Memories\nThe following information was saved from previous sessions:\n" + memories
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
 	fmt.Println("Agent ready. Type 'exit' or press Ctrl+C to quit.")
 
-	if err := agent.RunAgent(ctx, &client, model, systemPrompt, registry); err != nil {
+	if err := agent.RunAgent(ctx, &client, model, prompt, registry); err != nil {
 		fmt.Fprintf(os.Stderr, "Agent error: %v\n", err)
 		os.Exit(1)
 	}
