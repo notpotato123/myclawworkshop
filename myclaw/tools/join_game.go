@@ -33,10 +33,12 @@ func (s agentSink) Send(from, content string) {
 // JoinGame joins the maze heist game server, starts the inbox poller, and
 // starts the peer-refresh goroutine.
 type JoinGame struct {
-	State    *game.State
-	Registry *a2a.Registry
-	MsgCh    chan<- msgs.Message
-	AppCtx   context.Context // app-lifetime context for background goroutines
+	State      *game.State
+	Registry   *a2a.Registry
+	MsgCh      chan<- msgs.Message
+	AppCtx     context.Context // app-lifetime context for background goroutines
+	ExplorerID *string         // written after successful join; shared with Explorer
+	OnJoin     func()          // called after successful join (e.g. start explorer)
 }
 
 func (t JoinGame) Name() string { return "join_game" }
@@ -90,11 +92,21 @@ func (t JoinGame) Execute(_ context.Context, params json.RawMessage) (string, er
 	id, role, pos, _ := t.State.Snapshot()
 	slog.Info("joined game", "explorer_id", id, "role", role, "position", pos)
 
+	// Share the explorer ID with the Explorer struct and any other consumers.
+	if t.ExplorerID != nil {
+		*t.ExplorerID = id
+	}
+
 	// Start inbox poller — delivers incoming messages to the agent loop.
 	go t.State.PollInbox(t.AppCtx, inboxPollInterval, agentSink{t.MsgCh})
 
 	// Start peer refresh — keeps the peer registry current.
 	go t.State.RefreshPeers(t.AppCtx, peerRefreshInterval, t.Registry)
+
+	// Fire post-join hook (e.g. start autonomous explorer).
+	if t.OnJoin != nil {
+		t.OnJoin()
+	}
 
 	return fmt.Sprintf(
 		"Joined! explorer_id: %s | role: %s | position: (%d, %d)\nInbox poller and peer refresh started.",
