@@ -12,6 +12,7 @@ import (
 	"myclaw/memory"
 	"myclaw/scheduler"
 	"myclaw/tools"
+	"myclaw/web"
 )
 
 const defaultModel = "gpt-4o"
@@ -25,6 +26,10 @@ func main() {
 	baseURL := os.Getenv("CLAW_BASE_URL")
 	apiKey := os.Getenv("CLAW_API_KEY")
 	model := os.Getenv("CLAW_MODEL")
+	port := os.Getenv("CLAW_PORT")
+	if port == "" {
+		port = "8080"
+	}
 
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "CLAW_API_KEY environment variable is required")
@@ -95,6 +100,11 @@ func main() {
 
 	go sched.Run(ctx)
 	go agent.StartCLIInput(ctx, msgCh)
+	go func() {
+		if err := web.Start(port); err != nil {
+			fmt.Fprintf(os.Stderr, "Web server error: %v\n", err)
+		}
+	}()
 
 	fmt.Println("Agent ready. Type 'exit' or press Ctrl+C to quit.")
 
