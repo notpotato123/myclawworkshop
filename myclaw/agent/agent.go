@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -160,12 +161,14 @@ func agentTurn(ctx context.Context, client *openai.Client, model string, message
 				continue
 			}
 
+			slog.Info("tool call", "tool", toolName, "source", msg.Source)
 			if msg.OnTool != nil {
 				msg.OnTool(toolName, "calling")
 			}
 
 			result, err := tool.Execute(ctx, []byte(toolArgs))
 			if err != nil {
+				slog.Warn("tool error", "tool", toolName, "err", err)
 				errMsg := fmt.Sprintf("tool error: %v", err)
 				if msg.OnTool != nil {
 					msg.OnTool(toolName, "error")
@@ -174,6 +177,7 @@ func agentTurn(ctx context.Context, client *openai.Client, model string, message
 				continue
 			}
 
+			slog.Info("tool done", "tool", toolName)
 			if msg.OnTool != nil {
 				msg.OnTool(toolName, "done")
 			}

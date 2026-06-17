@@ -18,47 +18,71 @@
       --user-bg:    #4f46e5;
       --text:       #1c1917;
       --muted:      #78716c;
+      --code-bg:    #1e1e2e;
+      --code-text:  #cdd6f4;
       --radius:     14px;
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --mono: "SFMono-Regular", "Fira Code", "Fira Mono", Menlo, monospace;
     }
 
     html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 15px; }
 
     #app { display: flex; flex-direction: column; height: 100dvh; max-width: 760px; margin: 0 auto; }
 
-    /* Header */
+    /* ── Header ── */
     header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .logo { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 18px; font-weight: 700; user-select: none; }
     header h1 { font-size: 16px; font-weight: 600; letter-spacing: -.3px; }
     #status { font-size: 12px; color: var(--muted); margin-top: 1px; display: flex; align-items: center; gap: 5px; }
-    .dot-status { width: 6px; height: 6px; border-radius: 50%; background: #d4d4d4; flex-shrink: 0; transition: background .3s; }
+    .dot-status { width: 7px; height: 7px; border-radius: 50%; background: #d4d4d4; flex-shrink: 0; transition: background .3s; }
     .dot-status.online  { background: #4ade80; }
     .dot-status.offline { background: #f87171; }
 
-    /* Messages */
+    /* ── Messages ── */
     #messages { flex: 1; overflow-y: auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
 
     .msg { display: flex; flex-direction: column; max-width: 78%; gap: 4px; }
-    .msg.user  { align-self: flex-end; align-items: flex-end; }
-    .msg.agent { align-self: flex-start; align-items: flex-start; }
-    .msg.system { align-self: center; max-width: 90%; }
+    .msg.user   { align-self: flex-end;   align-items: flex-end; }
+    .msg.agent  { align-self: flex-start; align-items: flex-start; }
+    .msg.system { align-self: center;     max-width: 90%; }
 
     .msg .label { font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); padding: 0 4px; }
 
-    .bubble { padding: 10px 14px; border-radius: var(--radius); line-height: 1.55; word-break: break-word; white-space: pre-wrap; }
-    .msg.user  .bubble { background: var(--user-bg); color: #fff; border-bottom-right-radius: 4px; }
+    .bubble { padding: 10px 14px; border-radius: var(--radius); line-height: 1.6; word-break: break-word; }
+    .msg.user  .bubble { background: var(--user-bg); color: #fff; border-bottom-right-radius: 4px; white-space: pre-wrap; }
     .msg.agent .bubble { background: var(--agent-bg); border: 1px solid var(--agent-bd); color: var(--text); border-bottom-left-radius: 4px; }
     .msg.system .bubble { background: var(--accent-dim); border: 1px solid #c7d2fe; color: #4338ca; font-size: 13px; text-align: center; border-radius: 20px; padding: 6px 14px; }
 
-    /* Tool badges */
-    .tool-row { align-self: flex-start; }
-    .tool-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); background: var(--border); border-radius: 6px; padding: 4px 10px; }
-    .tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-    .tool-dot.done  { background: #4ade80; }
-    .tool-dot.error { background: #f87171; }
-    .tool-name { font-weight: 600; color: var(--text); }
+    /* ── Markdown inside agent bubbles ── */
+    .bubble p  { margin: 0 0 .6em; }
+    .bubble p:last-child { margin-bottom: 0; }
+    .bubble strong { font-weight: 700; }
+    .bubble em     { font-style: italic; }
+    .bubble code   { font-family: var(--mono); font-size: .85em; background: rgba(0,0,0,.07); padding: 1px 5px; border-radius: 4px; }
+    .bubble pre    { background: var(--code-bg); color: var(--code-text); border-radius: 10px; padding: 14px 16px; overflow-x: auto; margin: .6em 0; font-size: .82em; line-height: 1.55; }
+    .bubble pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; color: inherit; }
+    .bubble ul, .bubble ol { padding-left: 1.4em; margin: .4em 0; }
+    .bubble li { margin: .2em 0; }
+    .bubble h1,.bubble h2,.bubble h3 { font-weight: 700; margin: .6em 0 .3em; line-height: 1.3; }
+    .bubble h1 { font-size: 1.2em; } .bubble h2 { font-size: 1.07em; } .bubble h3 { font-size: .97em; }
+    .bubble blockquote { border-left: 3px solid var(--agent-bd); padding-left: 12px; color: var(--muted); margin: .5em 0; }
+    .bubble hr { border: none; border-top: 1px solid var(--border); margin: .6em 0; }
 
-    /* Typing indicator */
+    /* ── Tool section (collapsible) ── */
+    .tool-section { align-self: flex-start; width: 100%; max-width: 480px; }
+    details.tool-details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 13px; }
+    details.tool-details summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; user-select: none; color: var(--muted); }
+    details.tool-details summary::-webkit-details-marker { display: none; }
+    details.tool-details summary .chevron { font-size: 10px; transition: transform .2s; flex-shrink: 0; }
+    details.tool-details[open] summary .chevron { transform: rotate(90deg); }
+    details.tool-details summary .tool-name-label { font-weight: 600; color: var(--text); }
+    .tool-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; transition: background .3s; }
+    .tool-dot-sm.done  { background: #4ade80; }
+    .tool-dot-sm.error { background: #f87171; }
+    .tool-status-text { margin-left: auto; font-size: 11px; }
+    .tool-body { padding: 0 12px 10px; color: var(--muted); }
+
+    /* ── Typing indicator ── */
     .typing .bubble { background: var(--agent-bg); border: 1px solid var(--agent-bd); padding: 12px 16px; }
     .dots { display: flex; gap: 4px; }
     .dots span { width: 6px; height: 6px; border-radius: 50%; background: #6ee7b7; animation: bounce .9s ease-in-out infinite; }
@@ -66,7 +90,7 @@
     .dots span:nth-child(3) { animation-delay: .30s; }
     @keyframes bounce { 0%,80%,100% { transform: translateY(0); opacity: .6; } 40% { transform: translateY(-6px); opacity: 1; } }
 
-    /* Input */
+    /* ── Input ── */
     #input-area { padding: 16px 20px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
     textarea { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: var(--font); font-size: 15px; line-height: 1.5; outline: none; background: var(--bg); color: var(--text); min-height: 44px; max-height: 160px; transition: border-color .15s; }
     textarea:focus { border-color: var(--accent); }
@@ -96,7 +120,7 @@
 
   <div id="input-area">
     <textarea id="input" rows="1" placeholder="Message Claw…" autofocus></textarea>
-    <button id="send" disabled title="Send">
+    <button id="send" disabled title="Send (Enter)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="22" y1="2" x2="11" y2="13"/>
         <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -106,79 +130,192 @@
 </div>
 
 <script>
-  const messagesEl  = document.getElementById('messages');
-  const inputEl     = document.getElementById('input');
-  const sendBtn     = document.getElementById('send');
-  const dotEl       = document.getElementById('dot');
-  const statusText  = document.getElementById('status-text');
+  // ── Minimal markdown renderer ──────────────────────────────────────────────
+  // Handles: fenced code blocks, inline code, bold, italic, headings,
+  // unordered/ordered lists, blockquotes, horizontal rules.
+  function renderMarkdown(text) {
+    // Escape HTML in the raw text first (except inside code blocks, handled below).
+    function esc(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
 
-  let ws            = null;
-  let activeBubble  = null;   // current streaming agent bubble
-  let toolBadges    = {};     // toolName → {dot, status} elements
+    // Split into code-block segments vs plain segments.
+    const parts = text.split(/(```[\s\S]*?```)/g);
+    let html = '';
+
+    for (const part of parts) {
+      if (part.startsWith('```')) {
+        // Fenced code block.
+        const inner = part.slice(3, -3);
+        const nl    = inner.indexOf('\n');
+        const lang  = nl > -1 ? esc(inner.slice(0, nl).trim()) : '';
+        const code  = nl > -1 ? inner.slice(nl + 1) : inner;
+        html += `<pre><code${lang ? ` class="language-${lang}"` : ''}>${esc(code)}</code></pre>`;
+        continue;
+      }
+
+      // Plain segment: process line by line then inline.
+      const lines = part.split('\n');
+      let buf = '';
+      let inList = null; // 'ul' | 'ol' | null
+
+      const flushList = () => {
+        if (inList) { buf += `</${inList}>`; inList = null; }
+      };
+
+      const inlineMarkup = s =>
+        esc(s)
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.+?)\*/g,     '<em>$1</em>')
+          .replace(/__(.+?)__/g,     '<strong>$1</strong>')
+          .replace(/_(.+?)_/g,       '<em>$1</em>');
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // Heading.
+        const hm = line.match(/^(#{1,3})\s+(.*)/);
+        if (hm) { flushList(); buf += `<h${hm[1].length}>${inlineMarkup(hm[2])}</h${hm[1].length}>`; continue; }
+
+        // Horizontal rule.
+        if (/^[-*_]{3,}$/.test(line.trim())) { flushList(); buf += '<hr>'; continue; }
+
+        // Blockquote.
+        const bq = line.match(/^>\s?(.*)/);
+        if (bq) { flushList(); buf += `<blockquote>${inlineMarkup(bq[1])}</blockquote>`; continue; }
+
+        // Unordered list item.
+        const ul = line.match(/^[-*+]\s+(.*)/);
+        if (ul) {
+          if (inList !== 'ul') { flushList(); buf += '<ul>'; inList = 'ul'; }
+          buf += `<li>${inlineMarkup(ul[1])}</li>`;
+          continue;
+        }
+
+        // Ordered list item.
+        const ol = line.match(/^\d+\.\s+(.*)/);
+        if (ol) {
+          if (inList !== 'ol') { flushList(); buf += '<ol>'; inList = 'ol'; }
+          buf += `<li>${inlineMarkup(ol[1])}</li>`;
+          continue;
+        }
+
+        flushList();
+
+        // Empty line → paragraph break.
+        if (line.trim() === '') { buf += '<p>'; continue; }
+
+        buf += inlineMarkup(line) + '\n';
+      }
+      flushList();
+      // Wrap loose text in a paragraph if not already wrapped.
+      html += `<p>${buf}</p>`;
+    }
+    return html;
+  }
+
+  // ── DOM refs ───────────────────────────────────────────────────────────────
+  const messagesEl = document.getElementById('messages');
+  const inputEl    = document.getElementById('input');
+  const sendBtn    = document.getElementById('send');
+  const dotEl      = document.getElementById('dot');
+  const statusTxt  = document.getElementById('status-text');
+
+  let ws           = null;
+  let activeBubble = null;   // raw text accumulator for current streaming turn
+  let activeEl     = null;   // the .bubble DOM element being streamed into
+  let toolSections = {};     // toolName → {dot, statusEl} for live badge updates
 
   // ── Auto-resize textarea ──────────────────────────────────────────────────
   inputEl.addEventListener('input', () => {
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
   });
-
   inputEl.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
   sendBtn.addEventListener('click', sendMessage);
 
-  // ── WebSocket connection ──────────────────────────────────────────────────
+  // ── WebSocket ─────────────────────────────────────────────────────────────
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${proto}//${location.host}/ws`);
 
     ws.onopen = () => {
-      dotEl.className = 'dot-status online';
-      statusText.textContent = 'Connected';
+      dotEl.className  = 'dot-status online';
+      statusTxt.textContent = 'Connected';
       sendBtn.disabled = false;
     };
 
     ws.onclose = () => {
-      dotEl.className = 'dot-status offline';
-      statusText.textContent = 'Disconnected — reconnecting…';
+      dotEl.className  = 'dot-status offline';
+      statusTxt.textContent = 'Disconnected — reconnecting…';
       sendBtn.disabled = true;
+      activeBubble = null; activeEl = null;
       ws = null;
-      // Finish any in-progress bubble so the UI isn't stuck mid-stream.
-      activeBubble = null;
       setTimeout(connect, 2000);
     };
 
-    ws.onerror = () => ws.close();
+    ws.onerror = () => ws && ws.close();
 
-    ws.onmessage = e => {
-      const msg = JSON.parse(e.data);
+    ws.onmessage = ({ data }) => {
+      const msg = JSON.parse(data);
 
       switch (msg.type) {
 
         case 'chunk':
           if (!activeBubble) {
             removeTyping();
-            activeBubble = createAgentBubble();
+            // Create the agent message group + bubble element.
+            const wrap  = document.createElement('div');
+            wrap.className = 'msg agent';
+            const label = document.createElement('div');
+            label.className = 'label';
+            label.textContent = 'Claw';
+            const bub = document.createElement('div');
+            bub.className = 'bubble';
+            wrap.appendChild(label);
+            wrap.appendChild(bub);
+            messagesEl.appendChild(wrap);
+            activeEl     = bub;
+            activeBubble = '';
           }
-          activeBubble.textContent += msg.content;
+          activeBubble += msg.content;
+          // Re-render markdown as text arrives.
+          activeEl.innerHTML = renderMarkdown(activeBubble);
           scrollToBottom();
           break;
 
         case 'done':
-          activeBubble = null;
-          toolBadges = {};
+          // Final render with complete text.
+          if (activeBubble !== null && activeEl) {
+            activeEl.innerHTML = renderMarkdown(activeBubble);
+          }
+          activeBubble = null; activeEl = null;
+          toolSections = {};
+          removeTyping();
+          scrollToBottom();
           break;
 
-        case 'tool_call':
-          activeBubble = null; // any prior text is "done" before the tool runs
-          toolBadges[msg.name] = appendToolBadge(msg.name, 'running…');
+        case 'tool_call': {
+          // Close any open agent bubble so tool section appears between turns.
+          if (activeBubble !== null && activeEl) {
+            activeEl.innerHTML = renderMarkdown(activeBubble);
+            activeBubble = null; activeEl = null;
+          }
+          const section = appendToolSection(msg.name);
+          toolSections[msg.name] = section;
+          scrollToBottom();
           break;
+        }
 
         case 'tool_result': {
-          const badge = toolBadges[msg.name];
-          if (badge) {
-            badge.dot.className    = 'tool-dot ' + (msg.status === 'done' ? 'done' : 'error');
-            badge.status.textContent = msg.status === 'done' ? 'done' : 'error';
+          const section = toolSections[msg.name];
+          if (section) {
+            const done = msg.status === 'done';
+            section.dot.className        = 'tool-dot-sm ' + (done ? 'done' : 'error');
+            section.statusEl.textContent = done ? 'done' : 'error';
           }
           break;
         }
@@ -194,79 +331,74 @@
   function sendMessage() {
     const text = inputEl.value.trim();
     if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-
     appendUserMessage(text);
     inputEl.value = '';
     inputEl.style.height = 'auto';
     showTyping();
-
     ws.send(JSON.stringify({ type: 'message', content: text }));
   }
 
   // ── DOM helpers ───────────────────────────────────────────────────────────
   function appendUserMessage(text) {
-    const wrap   = document.createElement('div');
+    const wrap = document.createElement('div');
     wrap.className = 'msg user';
-    const label  = document.createElement('div');
+    const label = document.createElement('div');
     label.className = 'label';
     label.textContent = 'You';
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = text;
+    const bub = document.createElement('div');
+    bub.className = 'bubble';
+    bub.textContent = text;
     wrap.appendChild(label);
-    wrap.appendChild(bubble);
+    wrap.appendChild(bub);
     messagesEl.appendChild(wrap);
     scrollToBottom();
-  }
-
-  function createAgentBubble() {
-    const wrap   = document.createElement('div');
-    wrap.className = 'msg agent';
-    const label  = document.createElement('div');
-    label.className = 'label';
-    label.textContent = 'Claw';
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    wrap.appendChild(label);
-    wrap.appendChild(bubble);
-    messagesEl.appendChild(wrap);
-    scrollToBottom();
-    return bubble;
   }
 
   function appendSystemMessage(text) {
-    const wrap   = document.createElement('div');
+    const wrap = document.createElement('div');
     wrap.className = 'msg system';
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = text;
-    wrap.appendChild(bubble);
+    const bub = document.createElement('div');
+    bub.className = 'bubble';
+    bub.textContent = text;
+    wrap.appendChild(bub);
     messagesEl.appendChild(wrap);
     scrollToBottom();
   }
 
-  function appendToolBadge(name, statusText) {
-    const row  = document.createElement('div');
-    row.className = 'tool-row';
-    const badge = document.createElement('div');
-    badge.className = 'tool-badge';
+  // Returns { dot, statusEl } for live updates.
+  function appendToolSection(name) {
+    const section = document.createElement('div');
+    section.className = 'tool-section';
+
+    const details = document.createElement('details');
+    details.className = 'tool-details';
+
+    const summary = document.createElement('summary');
+    const chevron = document.createElement('span');
+    chevron.className = 'chevron';
+    chevron.textContent = '▶';
     const dot = document.createElement('span');
-    dot.className = 'tool-dot';
+    dot.className = 'tool-dot-sm';
     const nameEl = document.createElement('span');
-    nameEl.className = 'tool-name';
+    nameEl.className = 'tool-name-label';
     nameEl.textContent = name;
-    const sep = document.createElement('span');
-    sep.textContent = '—';
-    const st = document.createElement('span');
-    st.textContent = statusText;
-    badge.appendChild(dot);
-    badge.appendChild(nameEl);
-    badge.appendChild(sep);
-    badge.appendChild(st);
-    row.appendChild(badge);
-    messagesEl.appendChild(row);
-    scrollToBottom();
-    return { dot, status: st };
+    const statusEl = document.createElement('span');
+    statusEl.className = 'tool-status-text';
+    statusEl.textContent = 'running…';
+    summary.appendChild(chevron);
+    summary.appendChild(dot);
+    summary.appendChild(nameEl);
+    summary.appendChild(statusEl);
+
+    const body = document.createElement('div');
+    body.className = 'tool-body';
+    body.textContent = `Called ${name}`;
+
+    details.appendChild(summary);
+    details.appendChild(body);
+    section.appendChild(details);
+    messagesEl.appendChild(section);
+    return { dot, statusEl };
   }
 
   let typingEl = null;
@@ -279,10 +411,8 @@
     scrollToBottom();
   }
   function removeTyping() { typingEl?.remove(); typingEl = null; }
-
   function scrollToBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 
-  // ── Start ─────────────────────────────────────────────────────────────────
   connect();
 </script>
 </body>

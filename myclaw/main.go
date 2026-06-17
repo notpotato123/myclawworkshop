@@ -3,52 +3,41 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
+	"time"
 
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
 	"myclaw/agent"
+	"myclaw/config"
 	"myclaw/memory"
 	"myclaw/scheduler"
 	"myclaw/tools"
 	"myclaw/web"
-
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
 )
-
-const defaultModel = "qwen"
-
-const baseSystemPrompt = "You are a helpful assistant. You have access to tools for reading files, listing directories, writing files, and running shell commands. Use them when appropriate to help the user."
 
 // memoryTokenBudget caps injected memories at ~2000 tokens (≈8000 chars).
 const memoryTokenBudget = 8000
 
 func main() {
-	baseURL := os.Getenv("CLAW_BASE_URL")
-	apiKey := os.Getenv("CLAW_API_KEY")
-	model := os.Getenv("CLAW_MODEL")
-	port := os.Getenv("CLAW_PORT")
-
-	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "CLAW_API_KEY environment variable is required")
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if model == "" {
-		model = defaultModel
-	}
-	if port == "" {
-		port = "8080"
-	}
+	cfg.Log()
 
-	opts := []option.RequestOption{option.WithAPIKey(apiKey)}
-	if baseURL != "" {
-		opts = append(opts, option.WithBaseURL(baseURL))
+	opts := []option.RequestOption{option.WithAPIKey(cfg.APIKey)}
+	if cfg.BaseURL != "" {
+		opts = append(opts, option.WithBaseURL(cfg.BaseURL))
 	}
 	client := openai.NewClient(opts...)
 
-	memStore, err := memory.NewStore(".claw_memory")
+	memStore, err := memory.NewStore(cfg.MemoryDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create memory store: %v\n", err)
+		slog.Error("failed to create memory store", "err", err)
 		os.Exit(1)
 	}
 
@@ -57,9 +46,10 @@ func main() {
 
 	// hub broadcasts agent output to all connected WebSocket clients.
 	hub := web.NewHub()
+	srv := web.NewServer(hub, msgCh)
 
-	sched, err := scheduler.New("scheduler/tasks.json", func(description string) {
-		// Notify the web UI that a scheduled task is firing.
+	sched, err := scheduler.New(cfg.TasksFile, func(description string) {
+		slog.Info("scheduled task fired", "description", description)
 		hub.Broadcast(web.SystemMsg("Scheduled task: " + description))
 		msgCh <- agent.Message{
 			Content: description,
@@ -73,13 +63,14 @@ func main() {
 				hub.Broadcast(web.DoneMsg())
 			},
 			OnTool: func(name, status string) {
+				slog.Info("tool call (scheduler)", "tool", name, "status", status)
 				fmt.Fprintf(os.Stderr, "[tool %s: %s]\n", name, status)
 				hub.Broadcast(web.ToolMsg(name, status))
 			},
 		}
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create scheduler: %v\n", err)
+		slog.Error("failed to create scheduler", "err", err)
 		os.Exit(1)
 	}
 
@@ -94,32 +85,40 @@ func main() {
 		tools.Schedule{Sched: sched},
 	} {
 		if err := registry.Register(t); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to register tool %s: %v\n", t.Name(), err)
+			slog.Error("failed to register tool", "tool", t.Name(), "err", err)
 			os.Exit(1)
 		}
 	}
 
-	prompt := baseSystemPrompt
+	prompt := web.SystemPrompt()
 	if memories := memStore.Dump(memoryTokenBudget); memories != "" {
 		prompt += "\n\n## Memories\nThe following information was saved from previous sessions:\n" + memories
 	}
 
+	// ctx is cancelled on Ctrl+C.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
 	go sched.Run(ctx)
 	go agent.StartCLIInput(ctx, msgCh)
 	go func() {
-		srv := web.NewServer(hub, msgCh)
-		if err := srv.Start(port); err != nil {
-			fmt.Fprintf(os.Stderr, "Web server error: %v\n", err)
+		if err := srv.Start(cfg.Port); err != nil {
+			slog.Error("web server error", "err", err)
 		}
 	}()
 
+	slog.Info("agent ready")
 	fmt.Println("Agent ready. Type 'exit' or press Ctrl+C to quit.")
 
-	if err := agent.RunAgent(ctx, &client, model, prompt, registry, msgCh); err != nil {
-		fmt.Fprintf(os.Stderr, "Agent error: %v\n", err)
+	if err := agent.RunAgent(ctx, &client, cfg.Model, prompt, registry, msgCh); err != nil {
+		slog.Error("agent error", "err", err)
 		os.Exit(1)
 	}
+
+	// Graceful shutdown: give in-flight work 5 s to drain then close WebSockets.
+	slog.Info("shutting down")
+	shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	srv.Shutdown(shutCtx)
+	slog.Info("shutdown complete")
 }

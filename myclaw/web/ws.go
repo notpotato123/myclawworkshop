@@ -2,7 +2,9 @@ package web
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 	"myclaw/agent"
@@ -19,29 +21,31 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Each client gets a buffered send channel. The writer goroutine drains it;
-	// the reader goroutine feeds it via hub.Broadcast.
 	sendCh := make(chan []byte, 64)
 	s.hub.register(sendCh)
 
-	// Writer goroutine: serialises writes to the WebSocket (gorilla requires
-	// that writes come from a single goroutine).
+	// closeOnce ensures sendCh is closed exactly once regardless of whether
+	// the reader loop exits first or CloseAll fires during shutdown.
+	var closeOnce sync.Once
+	closeSend := func() {
+		s.hub.unregister(sendCh)
+		closeOnce.Do(func() { close(sendCh) })
+	}
+
+	// Writer goroutine: serialises writes to the WebSocket.
 	go func() {
 		defer conn.Close()
 		for msg := range sendCh {
 			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				closeSend() // also drain the hub registration on write error
 				return
 			}
 		}
 	}()
 
-	// Cleanup: unregister before close so Broadcast never touches a closed channel.
-	defer func() {
-		s.hub.unregister(sendCh)
-		close(sendCh)
-	}()
-
 	// Reader loop: receive messages from the browser and hand them to the agent.
+	defer closeSend()
+
 	for {
 		_, data, err := conn.ReadMessage()
 		if err != nil {
@@ -55,6 +59,8 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(data, &in); err != nil || in.Type != "message" || in.Content == "" {
 			continue
 		}
+
+		slog.Info("web message received", "content_len", len(in.Content))
 
 		s.msgCh <- agent.Message{
 			Content: in.Content,

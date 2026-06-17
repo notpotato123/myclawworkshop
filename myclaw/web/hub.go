@@ -45,6 +45,17 @@ func (h *Hub) Broadcast(msg []byte) {
 	}
 }
 
+// CloseAll closes the send channel of every registered client, causing their
+// writer goroutines to exit cleanly. Called during graceful shutdown.
+func (h *Hub) CloseAll() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for ch := range h.clients {
+		close(ch)
+	}
+	h.clients = make(map[chan []byte]struct{})
+}
+
 // ── JSON message constructors ─────────────────────────────────────────────────
 
 type wsMsg struct {
