@@ -1,5 +1,6 @@
 # Build artifacts
 *.exe
+myclaw/myclaw
 memory_data/
 scheduler/tasks.json
 
