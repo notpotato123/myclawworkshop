@@ -187,7 +187,8 @@ func parseInteresting(desc string) (bool, string) {
 	lower := strings.ToLower(desc)
 
 	if strings.Contains(lower, "convergence lock") {
-		return true, "The CONVERGENCE LOCK is active. Navigate to the jewel coordinates and broadcast them."
+		return true, "CONVERGENCE LOCK is active. Extract the jewel coordinates from the description. " +
+			"Use the move tool to navigate there. Broadcast the coordinates so all peers converge."
 	}
 	if strings.Contains(lower, "golden glow") || strings.Contains(desc, "CROWN JEWEL") {
 		return true, "You can see the CROWN JEWEL nearby. Move toward it and broadcast its location."
