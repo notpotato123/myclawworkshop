@@ -8,11 +8,19 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"myclaw/a2a"
 )
+
+func defaultGameServerURL() string {
+	if u := os.Getenv("GAME_SERVER_URL"); u != "" {
+		return u
+	}
+	return "http://localhost:9090"
+}
 
 // MessageSink accepts incoming game messages so the game package can feed the
 // agent loop without creating an import cycle with the agent package.
@@ -93,6 +101,7 @@ func (s *State) Join(gameServerURL, agentCardURL string) error {
 	}
 	s.joined = true
 	s.mu.Unlock()
+	slog.Info("game server URL", "url", s.GameServerURL)
 	return nil
 }
 
@@ -104,10 +113,15 @@ func (s *State) Joined() bool {
 }
 
 // Snapshot returns a copy of the current state fields (safe to call concurrently).
+// gameURL falls back to GAME_SERVER_URL env var if not set from the join response.
 func (s *State) Snapshot() (explorerID, role string, pos Position, gameURL string) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.ExplorerID, s.Role, s.Position, s.GameServerURL
+	gameURL = s.GameServerURL
+	if gameURL == "" {
+		gameURL = defaultGameServerURL()
+	}
+	return s.ExplorerID, s.Role, s.Position, gameURL
 }
 
 // PollInbox polls GET {gameServerURL}/api/inbox/{explorerID} every interval

@@ -81,7 +81,26 @@ func main() {
 	gameState := &game.State{}
 
 	var explorerID string
-	explorer := &tools.Explorer{ExplorerID: &explorerID}
+	explorer := &tools.Explorer{
+		ExplorerID: &explorerID,
+		OnEvent: func(content string) {
+			msgCh <- agent.Message{
+				Content: content,
+				Source:  "explorer",
+				ReplyTo: func(s string) {
+					fmt.Print(s)
+					hub.Broadcast(web.ChunkMsg(s))
+				},
+				Done: func() {
+					fmt.Println()
+					hub.Broadcast(web.DoneMsg())
+				},
+				OnTool: func(name, status string) {
+					hub.Broadcast(web.ToolMsg(name, status))
+				},
+			}
+		},
+	}
 
 	// ctx is cancelled on Ctrl+C.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -100,6 +119,7 @@ func main() {
 		tools.AskPeer{Registry: peerRegistry},
 		tools.Broadcast{Registry: peerRegistry},
 		tools.FindPeerWithSkill{Registry: peerRegistry},
+		tools.UseAbility{ExplorerID: &explorerID},
 		tools.JoinGame{
 			State:      gameState,
 			Registry:   peerRegistry,

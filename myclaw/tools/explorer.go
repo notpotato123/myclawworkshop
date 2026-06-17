@@ -12,7 +12,8 @@ import (
 )
 
 type Explorer struct {
-	ExplorerID *string // shared pointer, set after join
+	ExplorerID *string        // shared pointer, set after join
+	OnEvent    func(string)   // called with focused context when something interesting happens
 
 	visited map[string]int // "x,y" -> visit count
 	lastDir string
@@ -61,21 +62,31 @@ func (e *Explorer) tick(ctx context.Context) {
 		return
 	}
 
-	// 2. Parse exits from the text description
-	exits := parseExits(lookResp.Description)
+	desc := lookResp.Description
+
+	// 2. Check for interesting events — hand off to LLM if found.
+	if interesting, instruction := parseInteresting(desc); interesting {
+		if e.OnEvent != nil {
+			e.OnEvent(fmt.Sprintf("[Explorer event] %s\n\nCurrent view:\n%s", instruction, desc))
+		}
+		return // skip deterministic movement this tick
+	}
+
+	// 3. Parse exits from the text description
+	exits := parseExits(desc)
 	if len(exits) == 0 {
 		return
 	}
 
-	// 3. Track position and pick direction
-	pos := parsePosition(lookResp.Description)
+	// 4. Track position and pick direction
+	pos := parsePosition(desc)
 	e.mu.Lock()
 	e.visited[pos]++
 	dir := e.pickDirection(exits, pos)
 	e.lastDir = dir
 	e.mu.Unlock()
 
-	// 4. Move (plain HTTP, no LLM)
+	// 5. Move (plain HTTP, no LLM)
 	gamePost(ctx, "/api/move", map[string]string{ //nolint:errcheck
 		"explorer_id": id,
 		"direction":   dir,
@@ -168,6 +179,30 @@ func (e *Explorer) pickDirection(exits []string, currentPos string) string {
 		}
 	}
 	return best[rand.Intn(len(best))]
+}
+
+// parseInteresting returns true and a focused instruction when the look
+// description contains something the LLM should handle.
+func parseInteresting(desc string) (bool, string) {
+	lower := strings.ToLower(desc)
+
+	if strings.Contains(lower, "convergence lock") {
+		return true, "CONVERGENCE LOCK is active. Extract the jewel coordinates from the description. " +
+			"Use the move tool to navigate there. Broadcast the coordinates so all peers converge."
+	}
+	if strings.Contains(lower, "golden glow") || strings.Contains(desc, "CROWN JEWEL") {
+		return true, "You can see the CROWN JEWEL nearby. Move toward it and broadcast its location."
+	}
+	if strings.Contains(lower, "locked door") {
+		return true, "You found a locked door. If it matches your role, use your ability. Otherwise broadcast its location."
+	}
+	if strings.Contains(desc, ">> ") {
+		if strings.Contains(lower, "need") || strings.Contains(lower, "converge") || strings.Contains(lower, "jewel") {
+			return true, "Broadcast messages have actionable info. Decide what to do."
+		}
+	}
+
+	return false, ""
 }
 
 func offsetPosition(pos, dir string) string {
