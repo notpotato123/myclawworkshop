@@ -9,6 +9,7 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"myclaw/agent"
+	"myclaw/memory"
 	"myclaw/tools"
 )
 
@@ -39,12 +40,20 @@ func main() {
 
 	client := openai.NewClient(opts...)
 
+	memStore, err := memory.NewStore(".claw_memory")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create memory store: %v\n", err)
+		os.Exit(1)
+	}
+
 	registry := tools.NewRegistry()
 	for _, t := range []tools.Tool{
 		tools.ReadFile{},
 		tools.ListDirectory{},
 		tools.WriteFile{},
 		tools.RunCommand{},
+		tools.Remember{Store: memStore},
+		tools.Recall{Store: memStore},
 	} {
 		if err := registry.Register(t); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to register tool %s: %v\n", t.Name(), err)
