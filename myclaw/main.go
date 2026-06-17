@@ -119,6 +119,7 @@ func main() {
 		tools.AskPeer{Registry: peerRegistry},
 		tools.Broadcast{Registry: peerRegistry},
 		tools.FindPeerWithSkill{Registry: peerRegistry},
+		tools.UseAbility{ExplorerID: &explorerID},
 		tools.JoinGame{
 			State:      gameState,
 			Registry:   peerRegistry,
