@@ -8,6 +8,7 @@ import (
 
 	"myclaw/agent"
 	"myclaw/memory"
+	"myclaw/scheduler"
 	"myclaw/tools"
 
 	"github.com/openai/openai-go"
@@ -50,6 +51,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	// injectCh carries scheduler-fired task descriptions into the agent loop.
+	injectCh := make(chan string, 8)
+
+	sched, err := scheduler.New("scheduler/tasks.json", func(description string) {
+		injectCh <- description
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create scheduler: %v\n", err)
+		os.Exit(1)
+	}
+
 	registry := tools.NewRegistry()
 	for _, t := range []tools.Tool{
 		tools.ReadFile{},
@@ -58,6 +70,7 @@ func main() {
 		tools.RunCommand{},
 		tools.Remember{Store: memStore},
 		tools.Recall{Store: memStore},
+		tools.Schedule{Sched: sched},
 	} {
 		if err := registry.Register(t); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to register tool %s: %v\n", t.Name(), err)
@@ -73,9 +86,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
+	go sched.Run(ctx)
+
 	fmt.Println("Agent ready. Type 'exit' or press Ctrl+C to quit.")
 
-	if err := agent.RunAgent(ctx, &client, model, prompt, registry); err != nil {
+	if err := agent.RunAgent(ctx, &client, model, prompt, registry, injectCh); err != nil {
 		fmt.Fprintf(os.Stderr, "Agent error: %v\n", err)
 		os.Exit(1)
 	}

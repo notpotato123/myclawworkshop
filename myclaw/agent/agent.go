@@ -15,40 +15,66 @@ import (
 // RunAgent runs the main agent loop. It reads user input from stdin,
 // sends it to the LLM with conversation history, handles tool calls,
 // and streams responses back to stdout.
-func RunAgent(ctx context.Context, client *openai.Client, model string, systemPrompt string, registry *tools.Registry) error {
+//
+// injectCh is an optional channel for injecting messages into the loop
+// programmatically (e.g. from the scheduler). Pass nil to disable injection.
+func RunAgent(ctx context.Context, client *openai.Client, model string, systemPrompt string, registry *tools.Registry, injectCh <-chan string) error {
 	messages := []openai.ChatCompletionMessageParamUnion{
 		systemMessage(systemPrompt),
 	}
 
 	toolDefs := buildToolDefs(registry)
 
-	scanner := bufio.NewScanner(os.Stdin)
+	// Run the blocking stdin scanner in a goroutine so we can also select on
+	// injectCh and ctx.Done without getting stuck waiting for user input.
+	inputCh := make(chan string)
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			inputCh <- scanner.Text()
+		}
+		close(inputCh)
+	}()
 
+	// nilInject is a nil channel that never fires; used when caller passes nil.
+	var nilInject <-chan string
+	if injectCh == nil {
+		injectCh = nilInject
+	}
+
+	fmt.Print("> ")
 	for {
-		fmt.Print("> ")
+		var input string
+		var injected bool
 
 		select {
 		case <-ctx.Done():
 			fmt.Println("\nGoodbye!")
 			return nil
-		default:
-		}
-
-		if !scanner.Scan() {
-			if err := scanner.Err(); err != nil {
-				return fmt.Errorf("reading input: %w", err)
+		case line, ok := <-inputCh:
+			if !ok {
+				fmt.Println()
+				return nil
 			}
-			fmt.Println()
-			return nil
+			input = strings.TrimSpace(line)
+		case msg := <-injectCh:
+			input = msg
+			injected = true
 		}
 
-		input := strings.TrimSpace(scanner.Text())
-		if input == "" {
-			continue
+		if !injected {
+			if input == "" {
+				fmt.Print("> ")
+				continue
+			}
+			if input == "exit" {
+				fmt.Println("Goodbye!")
+				return nil
+			}
 		}
-		if input == "exit" {
-			fmt.Println("Goodbye!")
-			return nil
+
+		if injected {
+			fmt.Printf("\n[scheduled] %s\n", input)
 		}
 
 		messages = append(messages, userMessage(input))
@@ -57,6 +83,9 @@ func RunAgent(ctx context.Context, client *openai.Client, model string, systemPr
 		messages, err = agentTurn(ctx, client, model, messages, toolDefs, registry)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		}
+		if !injected {
+			fmt.Print("> ")
 		}
 	}
 }
