@@ -3,11 +3,13 @@ package web
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"strings"
 
+	"myclaw/a2a"
 	"myclaw/agent"
 )
 
@@ -29,13 +31,14 @@ type Server struct {
 	hub     *Hub
 	msgCh   chan<- agent.Message
 	httpSrv *http.Server
+	port    string
 }
 
 // NewServer creates a Server. hub is shared with callers so they can
 // broadcast to WebSocket clients from outside the web package (e.g. scheduler
 // callbacks in main.go).
-func NewServer(hub *Hub, msgCh chan<- agent.Message) *Server {
-	return &Server{hub: hub, msgCh: msgCh}
+func NewServer(hub *Hub, msgCh chan<- agent.Message, port string) *Server {
+	return &Server{hub: hub, msgCh: msgCh, port: port}
 }
 
 // Start begins serving HTTP and WebSocket traffic on the given port. It blocks
@@ -46,8 +49,14 @@ func (s *Server) Start(port string) error {
 		return fmt.Errorf("preparing static files: %w", err)
 	}
 
+	card := a2a.NewClawCard(s.port)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", s.handleWS)
+	mux.HandleFunc("/.well-known/agent-card.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(card)
+	})
 	mux.Handle("/", http.FileServer(http.FS(sub)))
 
 	s.httpSrv = &http.Server{Addr: ":" + port, Handler: mux}
