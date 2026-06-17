@@ -51,42 +51,36 @@ func (t JoinGame) Schema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"game_server_url": map[string]any{
-				"type":        "string",
-				"description": "Base URL of the game server, e.g. http://game.example.com",
-			},
 			"agent_card_url": map[string]any{
 				"type":        "string",
 				"description": "Public URL where this claw's agent card is reachable, e.g. http://my-ip:8080",
 			},
 		},
-		"required":             []string{"game_server_url", "agent_card_url"},
+		"required":             []string{"agent_card_url"},
 		"additionalProperties": false,
 	}
 }
 
 func (t JoinGame) Execute(_ context.Context, params json.RawMessage) (string, error) {
 	var p struct {
-		GameServerURL string `json:"game_server_url"`
-		AgentCardURL  string `json:"agent_card_url"`
+		AgentCardURL string `json:"agent_card_url"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return "", fmt.Errorf("invalid parameters: %w", err)
 	}
-	if p.GameServerURL == "" {
-		return "", fmt.Errorf("game_server_url is required")
-	}
 	if p.AgentCardURL == "" {
 		return "", fmt.Errorf("agent_card_url is required")
 	}
+
+	serverURL := gameServerURL()
 
 	if t.State.Joined() {
 		id, role, pos, _ := t.State.Snapshot()
 		return fmt.Sprintf("Already joined as %q (role: %s, position: %d,%d).", id, role, pos.X, pos.Y), nil
 	}
 
-	if err := t.State.Join(p.GameServerURL, p.AgentCardURL); err != nil {
-		return "", fmt.Errorf("joining game: %w", err)
+	if err := t.State.Join(serverURL, p.AgentCardURL); err != nil {
+		return "", fmt.Errorf("joining game at %s: %w", serverURL, err)
 	}
 
 	id, role, pos, _ := t.State.Snapshot()
