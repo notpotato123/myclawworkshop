@@ -80,6 +80,9 @@ func main() {
 	peerRegistry := a2a.NewRegistry()
 	gameState := &game.State{}
 
+	var explorerID string
+	explorer := &tools.Explorer{ExplorerID: &explorerID}
+
 	// ctx is cancelled on Ctrl+C.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -97,7 +100,14 @@ func main() {
 		tools.AskPeer{Registry: peerRegistry},
 		tools.Broadcast{Registry: peerRegistry},
 		tools.FindPeerWithSkill{Registry: peerRegistry},
-		tools.JoinGame{State: gameState, Registry: peerRegistry, MsgCh: msgCh, AppCtx: ctx},
+		tools.JoinGame{
+			State:      gameState,
+			Registry:   peerRegistry,
+			MsgCh:      msgCh,
+			AppCtx:     ctx,
+			ExplorerID: &explorerID,
+			OnJoin:     func() { go explorer.Start(ctx) },
+		},
 	} {
 		if err := registry.Register(t); err != nil {
 			slog.Error("failed to register tool", "tool", t.Name(), "err", err)
